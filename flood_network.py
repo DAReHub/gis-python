@@ -1,3 +1,6 @@
+# This script assigns flood depths to each link within a network.
+# Inputs - cityCAT floodmap output directory, transport network
+
 import os
 import rasterio
 from rasterio.features import shapes
@@ -8,10 +11,10 @@ import geopandas as gpd
 from shapely.geometry import shape
 
 
-floodmap_dir = "cityCAT_example_data/flooding_maps_citiCAT/"
-floodmap_extension = ".tif"
-network_filepath = "network/Newcastle_network_VIA.shp"
-output_dir = "test_outputs/all/"
+floodmap_dir = "test/data/flooding_maps_citiCAT/"
+floodmap_extension = "80min.tif"
+network_filepath = "test/data/network/Newcastle_network_VIA.shp"
+output_dir = "test/flood_network_outputs/"
 value_threshold = 0.005
 depths = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
 network_buffer_factor = 3.65 / 2
@@ -55,18 +58,6 @@ def assign_values(df, value_column, new_column, depths):
     return df
 
 
-def dissolve_polygons(df, value_column):
-    return df.dissolve(by=value_column).reset_index()
-
-
-def multipart_to_singlepart(df):
-    df["singleparts"] = df.apply(lambda x: [p for p in x.geometry.geoms], axis=1)
-    df = df.explode("singleparts")
-    df = df.set_geometry("singleparts")
-    del (df["geometry"])
-    return df.rename_geometry("geometry")
-
-
 def load_network(filepath):
     with fiona.open(filepath) as src:
         geometries = [shape(feature['geometry']) for feature in src]
@@ -105,20 +96,22 @@ def prepare_network():
 def process_floodmap(floodmap_filepath):
     df = raster_pixels_to_polygons(floodmap_filepath, depths_column)
     df = filter_polygons(df, depths_column, value_threshold)
-    df = assign_values(df, depths_column, aggregated_depths_column, depths)
-    df = dissolve_polygons(df, aggregated_depths_column)
-    return multipart_to_singlepart(df)
+    return assign_values(df, depths_column, aggregated_depths_column, depths)
+
+
+def remove_duplicates(df):
+    return df.drop_duplicates(subset=['ID', 'FRSPEED'], keep='last')
 
 
 def export_gpkg(df, filepath):
     print("Exporting to file: ", filepath + ".gpkg")
-    df = df[["ID", "VALUE", "value_agg", "FRSPEED", "geometry"]]
+    df = df[["ID", depths_column, aggregated_depths_column, "FRSPEED", "geometry"]]
     df.to_file(filepath + ".gpkg", driver="GPKG", engine="pyogrio")
 
 
 def export_csv(df, filepath):
     print("Exporting to file: ", filepath + ".csv")
-    df = df[["ID", "VALUE", "value_agg", "FRSPEED"]]
+    df = df[["ID", depths_column, aggregated_depths_column, "FRSPEED"]]
     df.to_csv(filepath + ".csv", index=False)
 
 
@@ -136,6 +129,7 @@ def main():
         try:
             df_floods = process_floodmap(floodmap_filepath)
             df = join_attribute_by_location(df_network, df_floods)
+            df = remove_duplicates(df)
         except Exception as e:
             print(f"Failed to process {file} -> {e}")
             continue
