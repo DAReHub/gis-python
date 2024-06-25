@@ -12,7 +12,7 @@ from rasterstats import zonal_stats
 
 
 floodmap_dir = "test/data/flooding_maps_citiCAT/"
-floodmap_extension = "40min.tif"
+floodmap_extension = ".tif"
 network_filepath = "test/data/network/Newcastle_network_VIA.shp"
 output_dir = "test/flood_network_outputs/"
 value_threshold = 0.005
