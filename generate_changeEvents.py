@@ -1,5 +1,10 @@
+# This script generates a networkChangeEvents xml file
+# Inputs - flood_network outputs
+
+
 import pandas as pd
 from datetime import datetime, timedelta
+
 
 input_dir = "test/flood_network_outputs/"
 output_xml = "test/generate_changeEvents_outputs/networkChangeEvents_test2.xml"
@@ -9,10 +14,15 @@ time_format = "%H:%M:%S"
 id_col = "ID"
 velocity_col = "velocity"
 
+
 def write_headers(file):
     file.write(f'<?xml version="1.0" encoding="UTF-8"?>\n')
     file.write(
-        f'<networkChangeEvents xmlns="http://www.matsim.org/files/dtd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.matsim.org/files/dtd http://www.matsim.org/files/dtd/networkChangeEvents.xsd">\n\n')
+        f'<networkChangeEvents xmlns="http://www.matsim.org/files/dtd" '
+        f'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+        f'xsi:schemaLocation="http://www.matsim.org/files/dtd '
+        f'http://www.matsim.org/files/dtd/networkChangeEvents.xsd">\n\n'
+    )
 
 
 def load_df(filepath):

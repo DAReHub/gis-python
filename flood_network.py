@@ -2,6 +2,7 @@
 # link within a network.
 # Inputs - cityCAT floodmap output directory, transport network
 
+
 import os
 import fiona
 import pyogrio  # utilised for faster exporting
@@ -15,8 +16,6 @@ floodmap_dir = "test/data/flooding_maps_citiCAT/"
 floodmap_extension = ".tif"
 network_filepath = "test/data/network/Newcastle_network_VIA.shp"
 output_dir = "test/flood_network_outputs/"
-value_threshold = 0.005
-depths = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
 network_buffer_factor = 3.65 / 2
 CRS = 27700
 excluded_modes = ["rail", "bus", "subway"]
