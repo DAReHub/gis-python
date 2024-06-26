@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 input_dir = "test/flood_network_outputs/"
-output_xml = "test.xml"
+output_xml = "test/generate_changeEvents_outputs/networkChangeEvents_test2.xml"
 start_time = "12:00:00"
 time_interval = "00:10:00"
 time_format = "%H:%M:%S"
@@ -47,8 +47,6 @@ def main():
         current_time = start_time
 
         for i in range(1, 13):
-            writefile.write(f'<networkChangeEvent startTime="{current_time}">\n')
-
             filename = f"NewcastleBaseline50mm_T{i}_{i}0min_flooded_network.csv"
             print(filename)
             filepath = input_dir + filename
@@ -56,14 +54,18 @@ def main():
             grouped = df.groupby(velocity_col)
             dfs = {value: df for value, df in grouped}
 
+
             for value, df in dfs.items():
+                writefile.write(f'<networkChangeEvent startTime="{current_time}">\n')
                 links = df["ID"].to_list()
                 for link in links:
                     writefile.write(f'<link refId="{link}"/>\n')
                 writefile.write(f'<freespeed type="absolute" value="{value}"/>\n')
-            writefile.write(f'</networkChangeEvents>\n')
+                writefile.write("</networkChangeEvent>\n")
 
             current_time = calculate_time(current_time, time_interval, time_format)
+
+        writefile.write(f'</networkChangeEvents>\n')
 
     print('Done')
 

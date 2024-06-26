@@ -108,7 +108,7 @@ def main():
         print("Processing: ", file)
 
         floodmap_filepath = floodmap_dir + file
-        output_filepath = output_dir + file.replace(".tif", "_flooded_networkTEST")
+        output_filepath = output_dir + file.replace(".tif", "_flooded_network")
 
         gdf = zonal_statistics(gdf_network, floodmap_filepath)
         gdf = vehicle_velocity(gdf)
