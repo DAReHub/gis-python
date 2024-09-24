@@ -1,7 +1,8 @@
 # This script generates a networkChangeEvents xml file
-# Inputs - flood_network outputs
+# Inputs - flood_network CSV outputs
 
 
+import os
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -56,7 +57,11 @@ def main():
         write_headers(writefile)
         current_time = start_time
 
-        for i in range(1, 13):
+        files = os.listdir(input_dir)
+        files = [i for i in files if ".csv" in i]
+
+        # TODO: Standardise input and output naming
+        for i in range(1, len(files)):
             filename = f"NewcastleBaseline50mm_T{i}_{i}0min_flooded_network.csv"
             print(filename)
             filepath = input_dir + filename

@@ -61,7 +61,8 @@ def zonal_statistics(gdf, filepath):
                 vectors=gdf['geometry'],
                 raster=filepath,
                 stats=["count", "min", "max", "mean", "sum", "std", "median",
-                       "majority", "minority", "unique", "range"]
+                       "majority", "minority", "unique", "range"],
+                all_touched=True
             )
         ),
         how='left'
@@ -87,13 +88,18 @@ def vehicle_velocity(gdf):
     return gdf
 
 
-def export_gpkg(df, filepath):
+def export_gpkg(gdf, filepath):
     print("Exporting to file: ", filepath + ".gpkg")
-    df.to_file(filepath + ".gpkg", driver="GPKG", engine="pyogrio")
+    gdf.to_file(filepath + ".gpkg", driver="GPKG", engine="pyogrio")
 
 
-def export_csv(df, filepath):
+def export_csv(gdf, filepath):
     print("Exporting to file: ", filepath + ".csv")
+    # TODO: Instead of dropping geometry, turn to WKT
+    # gdf['geometry'] = gdf['geometry'].apply(
+    #     lambda geom: geom.wkt if geom else None)
+    df = gdf.drop(columns='geometry')
+    df = df.fillna("null")
     df.to_csv(filepath + ".csv", index=False)
 
 
@@ -106,6 +112,7 @@ def main():
 
         print("Processing: ", file)
 
+        # TODO: Standardise input and output naming
         floodmap_filepath = floodmap_dir + file
         output_filepath = output_dir + file.replace(".tif", "_flooded_network")
 
