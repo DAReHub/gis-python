@@ -1,19 +1,16 @@
 # This script generates a networkChangeEvents xml file
 # Inputs - flood_network CSV outputs
 
-
 import os
+import re
 import pandas as pd
 from datetime import datetime, timedelta
+import json
 
 
-input_dir = "test/flood_network_outputs/"
-output_xml = "test/generate_changeEvents_outputs/networkChangeEvents_test2.xml"
-start_time = "12:00:00"
-time_interval = "00:10:00"
-time_format = "%H:%M:%S"
-id_col = "ID"
-velocity_col = "velocity"
+def load_config(filepath):
+    with open(filepath, 'r') as file:
+        return json.load(file)
 
 
 def write_headers(file):
@@ -26,13 +23,13 @@ def write_headers(file):
     )
 
 
-def load_df(filepath):
+def load_df(filepath, config):
     df = pd.read_csv(filepath)
-    df = df[[id_col, velocity_col]]
-    df = df.drop_duplicates(id_col)
-    df = df[df[id_col].notna()]
-    df = df[df[velocity_col].notna()] # TODO: Make sure there are no nan values coming from flooded_network
-    df.sort_values(by=velocity_col, inplace=True, ascending=True)
+    df = df[[config["id_column"], config["velocity_column"]]]
+    df = df.drop_duplicates(config["id_column"])
+    df = df[df[config["id_column"]].notna()]
+    df = df[df[config["velocity_column"]].notna()] # TODO: Make sure there are no nan values coming from flooded_network
+    df.sort_values(by=config["velocity_column"], inplace=True, ascending=True)
     return df
 
 
@@ -52,23 +49,28 @@ def calculate_time(time1, time2, time_format):
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 
-def main():
-    with open(output_xml, "w") as writefile:
+# TODO: Update input and output naming based on citycat outputs
+def sort_filenames(files):
+    return sorted(files, key=lambda x: int(re.search(r'_T(\d+)_', x).group(1)))
+
+
+def main(config_filepath, input_dir, output_dir):
+    config = load_config(config_filepath)["generate_changeEvents"]
+
+    with open(output_dir + "networkChangeEvents.xml", "w") as writefile:
         write_headers(writefile)
-        current_time = start_time
+        current_time = config["event_start_time"]
 
         files = os.listdir(input_dir)
         files = [i for i in files if ".csv" in i]
+        files = sort_filenames(files)
 
-        # TODO: Standardise input and output naming
-        for i in range(1, len(files)):
-            filename = f"NewcastleBaseline50mm_T{i}_{i}0min_flooded_network.csv"
+        for filename in files:
             print(filename)
             filepath = input_dir + filename
-            df = load_df(filepath)
-            grouped = df.groupby(velocity_col)
+            df = load_df(filepath, config)
+            grouped = df.groupby(config["velocity_column"])
             dfs = {value: df for value, df in grouped}
-
 
             for value, df in dfs.items():
                 writefile.write(f'<networkChangeEvent startTime="{current_time}">\n')
@@ -78,7 +80,10 @@ def main():
                 writefile.write(f'<freespeed type="absolute" value="{value}"/>\n')
                 writefile.write("</networkChangeEvent>\n")
 
-            current_time = calculate_time(current_time, time_interval, time_format)
+            current_time = calculate_time(
+                current_time,
+                config["time_interval"],
+                config["time_format"])
 
         writefile.write(f'</networkChangeEvents>\n')
 
@@ -86,4 +91,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(
+        config_filepath="",
+        input_dir="",
+        output_dir=""
+    )

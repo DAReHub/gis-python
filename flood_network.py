@@ -9,27 +9,21 @@ import pyogrio  # utilised for faster exporting
 import pandas as pd
 import geopandas as gpd
 from shapely.geometry import shape
-from rasterstats import zonal_stats
+from exactextract import exact_extract
+import json
 
 
-floodmap_dir = "test/data/flooding_maps_citiCAT/"
-floodmap_extension = ".tif"
-network_filepath = "test/data/network/Newcastle_network_VIA.shp"
-output_dir = "test/flood_network_outputs/"
-network_buffer_factor = 3.65 / 2
-CRS = 27700
-excluded_modes = ["rail", "bus", "subway"]
-depths_column = "VALUE"
-aggregated_depths_column = "value_agg"
-link_depth = "max"  # which depth of the link to use for speed calculation - "min", "max", "mean"
+def load_config(filepath):
+    with open(filepath, 'r') as file:
+        return json.load(file)
 
 
-def load_network(filepath):
+def load_network(filepath, CRS):
     with fiona.open(filepath) as src:
         geometries = [shape(feature['geometry']) for feature in src]
         properties = [feature['properties'] for feature in src]
-    df = gpd.GeoDataFrame(properties, geometry=geometries)
-    return df.set_crs(CRS)
+    gdf = gpd.GeoDataFrame(properties, geometry=geometries)
+    return gdf.set_crs(CRS)
 
 
 def exlude_network_modes(df, excluded_modes):
@@ -46,43 +40,54 @@ def remove_false_positive_categories(df):
     pass
 
 
-def prepare_network():
+def prepare_network(network_filepath, excluded_modes, network_buffer_factor, CRS):
     print("Preparing network")
-    gdf = load_network(network_filepath)
+    gdf = load_network(network_filepath, CRS)
     gdf = exlude_network_modes(gdf, excluded_modes)
     return buffer_network(gdf, network_buffer_factor)
 
 
-def zonal_statistics(gdf, filepath):
+def zonal_statistics(floodmap, network, statistic):
     print("calculating zonal statistics")
-    return gdf.join(
-        pd.DataFrame(
-            zonal_stats(
-                vectors=gdf['geometry'],
-                raster=filepath,
-                stats=["count", "min", "max", "mean", "sum", "std", "median",
-                       "majority", "minority", "unique", "range"],
-                all_touched=True
-            )
-        ),
-        how='left'
+    gdf = exact_extract(
+        rast=floodmap,
+        vec=network,
+        ops=statistic,
+        include_cols=["ID"],
+        include_geom=True,
+        output="pandas",
+        # progress=True
     )
-
-
-def calculate_velocity(depth, freespeed):
-    v_kmh = (0.0009 * depth**2) - (0.5529 * depth) + 86.9448
-    v_ms = v_kmh / 3.6
-    if v_ms > freespeed:
-        return freespeed
-    return v_ms
+    merged = network.merge(gdf.drop(columns='geometry'), on="ID", how="inner")
+    return gpd.GeoDataFrame(merged, geometry=gdf.geometry)
 
 
 # Method: https://doi.org/10.1016/j.trd.2017.06.020
-def vehicle_velocity(gdf):
+def calculate_velocity(depth, freespeed, A, B, C, x_min):
+    if depth > x_min:
+        return 0
+    max_v_in_flood_kmh = (A * depth**2) + (B * depth) + C
+    max_v_in_flood_ms = max_v_in_flood_kmh / 3.6
+    # if maximum velocity when flooded is greater than the speed limit, then
+    # default to the speed limit
+    if max_v_in_flood_ms > freespeed:
+        return freespeed
+    return max_v_in_flood_ms
+
+
+def vehicle_velocity(gdf, link_depth):
     print("calculating vehicle velocities")
+    # y = Ax**2 + Bx + C
+    A = 0.0009
+    B = -0.5529
+    C = 86.9448
+    # Find x at min y (curve does not go beyond this). 0 speed if greater.
+    x_min = -B / (2 * A)
     # Convert depth value from m to mm: * 1000
     gdf["velocity"] = gdf.apply(
-        lambda row: calculate_velocity(row[link_depth]*1000, row["FRSPEED"]),
+        lambda row: calculate_velocity(
+            row[link_depth]*1000, row["FRSPEED"], A, B, C, x_min
+        ),
         axis=1
     )
     return gdf
@@ -103,11 +108,18 @@ def export_csv(gdf, filepath):
     df.to_csv(filepath + ".csv", index=False)
 
 
-def main():
-    gdf_network = prepare_network()
+def main(config_filepath, network_filepath, floodmap_dir, output_dir):
+    config = load_config(config_filepath)["flood_network"]
+
+    gdf_network = prepare_network(
+        network_filepath,
+        config["excluded_modes"],
+        config["network_buffer_factor"],
+        config["CRS"]
+    )
 
     for file in os.listdir(floodmap_dir):
-        if not file.endswith(floodmap_extension):
+        if not file.endswith(config["extension"]):
             continue
 
         print("Processing: ", file)
@@ -116,8 +128,8 @@ def main():
         floodmap_filepath = floodmap_dir + file
         output_filepath = output_dir + file.replace(".tif", "_flooded_network")
 
-        gdf = zonal_statistics(gdf_network, floodmap_filepath)
-        gdf = vehicle_velocity(gdf)
+        gdf = zonal_statistics(floodmap_filepath, gdf_network, config["link_depth"])
+        gdf = vehicle_velocity(gdf, config["link_depth"])
 
         export_gpkg(gdf, output_filepath)
         export_csv(gdf, output_filepath)
@@ -126,4 +138,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(
+        config_filepath="",
+        floodmap_dir="",
+        network_filepath="",
+        output_dir=""
+    )

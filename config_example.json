@@ -1,0 +1,17 @@
+{
+  "flood_network": {
+    "extension": ".tif",
+    "network_buffer_factor": 1.825,
+    "CRS": 27700,
+    "excluded_modes": ["rail", "bus", "subway"],
+    "depths_column": "VALUE",
+    "link_depth": "max"
+  },
+  "generate_changeEvents": {
+    "event_start_time": "12:00:00",
+    "time_interval": "00:10:00",
+    "time_format": "%H:%M:%S",
+    "id_column": "ID",
+    "velocity_column": "velocity"
+  }
+}
