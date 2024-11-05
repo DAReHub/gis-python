@@ -5,12 +5,14 @@
 
 import os
 import fiona
-import pyogrio  # utilised for faster exporting
-import pandas as pd
 import geopandas as gpd
 from shapely.geometry import shape
 from exactextract import exact_extract
 import json
+
+# unreferenced but used by other packages
+import pyogrio  # for faster exporting
+import rasterio # for loading in rasters with exactextract
 
 
 def load_config(filepath):
