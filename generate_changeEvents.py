@@ -25,11 +25,8 @@ def write_headers(file):
 
 def load_df(filepath, config):
     df = pd.read_csv(filepath)
-    df = df[[config["id_column"], config["velocity_column"]]]
     df = df.drop_duplicates(config["id_column"])
     df = df[df[config["id_column"]].notna()]
-    df = df[df[config["velocity_column"]].notna()] # TODO: Make sure there are no nan values coming from flooded_network
-    df.sort_values(by=config["velocity_column"], inplace=True, ascending=True)
     return df
 
 
@@ -54,27 +51,25 @@ def sort_filenames(files):
     return sorted(files, key=lambda x: int(re.search(r'_T(\d+)_', x).group(1)))
 
 
-def main(config_filepath, input_dir, output_dir):
+def main(config_filepath, input_filepath, output_dir):
     config = load_config(config_filepath)["generate_changeEvents"]
 
     with open(output_dir + "networkChangeEvents.xml", "w") as writefile:
         write_headers(writefile)
         current_time = config["event_start_time"]
 
-        files = os.listdir(input_dir)
-        files = [i for i in files if ".csv" in i]
-        files = sort_filenames(files)
+        dataframe = load_df(input_filepath, config)
+        velocity_cols = [col for col in dataframe.columns if col.endswith("_" + config["velocity_column"])]
+        velocity_cols = sort_filenames(velocity_cols)
 
-        for filename in files:
-            print(filename)
-            filepath = input_dir + filename
-            df = load_df(filepath, config)
-            grouped = df.groupby(config["velocity_column"])
+        for column in velocity_cols:
+            print(column)
+            grouped = dataframe.groupby(column)
             dfs = {value: df for value, df in grouped}
 
-            for value, df in dfs.items():
+            for value, data in dfs.items():
                 writefile.write(f'<networkChangeEvent startTime="{current_time}">\n')
-                links = df["ID"].to_list()
+                links = data["ID"].to_list()
                 for link in links:
                     writefile.write(f'<link refId="{link}"/>\n')
                 writefile.write(f'<freespeed type="absolute" value="{value}"/>\n')
@@ -93,6 +88,6 @@ def main(config_filepath, input_dir, output_dir):
 if __name__ == "__main__":
     main(
         config_filepath="",
-        input_dir="",
+        input_filepath="",
         output_dir=""
     )

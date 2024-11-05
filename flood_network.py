@@ -49,15 +49,17 @@ def prepare_network(network_filepath, excluded_modes, network_buffer_factor, CRS
     return buffer_network(gdf, network_buffer_factor)
 
 
-def zonal_statistics(floodmap, network, statistic):
+def zonal_statistics(floodmap_filepaths, network, statistic):
     print("calculating zonal statistics")
+    ngdf = network[['ID', 'geometry']].copy()
     gdf = exact_extract(
-        rast=floodmap,
-        vec=network,
+        rast=floodmap_filepaths,
+        vec=ngdf,
         ops=statistic,
         include_cols=["ID"],
         include_geom=True,
         output="pandas",
+        strategy="raster-sequential",
         # progress=True
     )
     merged = network.merge(gdf.drop(columns='geometry'), on="ID", how="inner")
@@ -80,18 +82,21 @@ def calculate_velocity(depth, freespeed, A, B, C, x_min):
 def vehicle_velocity(gdf, link_depth):
     print("calculating vehicle velocities")
     # y = Ax**2 + Bx + C
-    A = 0.0009
-    B = -0.5529
-    C = 86.9448
+    A, B, C = 0.0009, -0.5529, 86.9448
     # Find x at min y (curve does not go beyond this). 0 speed if greater.
     x_min = -B / (2 * A)
-    # Convert depth value from m to mm: * 1000
-    gdf["velocity"] = gdf.apply(
-        lambda row: calculate_velocity(
-            row[link_depth]*1000, row["FRSPEED"], A, B, C, x_min
-        ),
-        axis=1
-    )
+
+    stat_columns = [col for col in gdf.columns if col.endswith("_" + link_depth)]
+    for column in stat_columns:
+        layer = column.replace("_" + link_depth, "_velocity")
+        # Convert depth value from m to mm: * 1000
+        gdf[layer] = gdf.apply(
+            lambda row: calculate_velocity(
+                row[column]*1000, row["FRSPEED"], A, B, C, x_min
+            ),
+            axis=1
+        )
+
     return gdf
 
 
@@ -112,6 +117,8 @@ def export_csv(gdf, filepath):
 
 def main(config_filepath, network_filepath, floodmap_dir, output_dir):
     config = load_config(config_filepath)["flood_network"]
+    filepaths = [floodmap_dir + file for file in os.listdir(floodmap_dir) if
+                 file.endswith(config["extension"])]
 
     gdf_network = prepare_network(
         network_filepath,
@@ -119,22 +126,12 @@ def main(config_filepath, network_filepath, floodmap_dir, output_dir):
         config["network_buffer_factor"],
         config["CRS"]
     )
+    gdf = zonal_statistics(filepaths, gdf_network, config["link_depth"])
+    gdf = vehicle_velocity(gdf, config["link_depth"])
 
-    for file in os.listdir(floodmap_dir):
-        if not file.endswith(config["extension"]):
-            continue
-
-        print("Processing: ", file)
-
-        # TODO: Standardise input and output naming
-        floodmap_filepath = floodmap_dir + file
-        output_filepath = output_dir + file.replace(".tif", "_flooded_network")
-
-        gdf = zonal_statistics(floodmap_filepath, gdf_network, config["link_depth"])
-        gdf = vehicle_velocity(gdf, config["link_depth"])
-
-        export_gpkg(gdf, output_filepath)
-        export_csv(gdf, output_filepath)
+    output = output_dir + "flooded_network"
+    export_gpkg(gdf, output)
+    export_csv(gdf, output)
 
     print("Done")
 
@@ -142,7 +139,7 @@ def main(config_filepath, network_filepath, floodmap_dir, output_dir):
 if __name__ == "__main__":
     main(
         config_filepath="",
-        floodmap_dir="",
         network_filepath="",
+        floodmap_dir="",
         output_dir=""
     )
