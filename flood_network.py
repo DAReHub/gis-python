@@ -86,16 +86,26 @@ def vehicle_velocity(gdf, link_depth):
     # Find x at min y (curve does not go beyond this). 0 speed if greater.
     x_min = -B / (2 * A)
 
-    stat_columns = [col for col in gdf.columns if col.endswith("_" + link_depth)]
-    for column in stat_columns:
-        layer = column.replace("_" + link_depth, "_velocity")
+    if link_depth in gdf.columns:
         # Convert depth value from m to mm: * 1000
-        gdf[layer] = gdf.apply(
+        gdf["velocity"] = gdf.apply(
             lambda row: calculate_velocity(
-                row[column]*1000, row["FRSPEED"], A, B, C, x_min
+                row[link_depth]*1000, row["FRSPEED"], A, B, C, x_min
             ),
             axis=1
         )
+
+    else:
+        stat_columns = [col for col in gdf.columns if col.endswith("_" + link_depth)]
+        for column in stat_columns:
+            layer = column.replace("_" + link_depth, "_velocity")
+            # Convert depth value from m to mm: * 1000
+            gdf[layer] = gdf.apply(
+                lambda row: calculate_velocity(
+                    row[column]*1000, row["FRSPEED"], A, B, C, x_min
+                ),
+                axis=1
+            )
 
     return gdf
 
@@ -116,6 +126,11 @@ def export_csv(gdf, filepath):
 
 
 def main(config_filepath, network_filepath, floodmap_dir, output_dir):
+    if not floodmap_dir.endswith("/"):
+        floodmap_dir += "/"
+    if not output_dir.endswith("/"):
+        output_dir += "/"
+
     config = load_config(config_filepath)["flood_network"]
     filepaths = [floodmap_dir + file for file in os.listdir(floodmap_dir) if
                  file.endswith(config["extension"])]
@@ -138,8 +153,8 @@ def main(config_filepath, network_filepath, floodmap_dir, output_dir):
 
 if __name__ == "__main__":
     main(
-        config_filepath="",
-        network_filepath="",
-        floodmap_dir="",
-        output_dir=""
+        config_filepath="test/config.json",
+        network_filepath="test/data/network/network.gpkg",
+        floodmap_dir="test/data/flooding_maps_citiCAT_single",
+        output_dir="test/flood_network_output_3"
     )
