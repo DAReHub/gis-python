@@ -49,7 +49,7 @@ def prepare_network(network_filepath, excluded_modes, network_buffer_factor, CRS
     return buffer_network(gdf, network_buffer_factor)
 
 
-def zonal_statistics(floodmap_filepaths, network, statistic):
+def zonal_statistics(floodmap_filepaths, network, statistic, extension):
     print("calculating zonal statistics")
     ngdf = network[['ID', 'geometry']].copy()
     gdf = exact_extract(
@@ -63,6 +63,10 @@ def zonal_statistics(floodmap_filepaths, network, statistic):
         # progress=True
     )
     merged = network.merge(gdf.drop(columns='geometry'), on="ID", how="inner")
+    # if single file processed, column name will be just <statistic>. Add filename
+    if statistic in merged.columns:
+        filename = floodmap_filepaths[0].split("/")[-1].replace(extension, "")
+        merged = merged.rename(columns={statistic: filename + "_" + statistic})
     return gpd.GeoDataFrame(merged, geometry=gdf.geometry)
 
 
@@ -86,26 +90,16 @@ def vehicle_velocity(gdf, link_depth):
     # Find x at min y (curve does not go beyond this). 0 speed if greater.
     x_min = -B / (2 * A)
 
-    if link_depth in gdf.columns:
+    stat_columns = [col for col in gdf.columns if col.endswith("_" + link_depth)]
+    for column in stat_columns:
+        layer = column.replace("_" + link_depth, "_velocity")
         # Convert depth value from m to mm: * 1000
-        gdf["velocity"] = gdf.apply(
+        gdf[layer] = gdf.apply(
             lambda row: calculate_velocity(
-                row[link_depth]*1000, row["FRSPEED"], A, B, C, x_min
+                row[column]*1000, row["FRSPEED"], A, B, C, x_min
             ),
             axis=1
         )
-
-    else:
-        stat_columns = [col for col in gdf.columns if col.endswith("_" + link_depth)]
-        for column in stat_columns:
-            layer = column.replace("_" + link_depth, "_velocity")
-            # Convert depth value from m to mm: * 1000
-            gdf[layer] = gdf.apply(
-                lambda row: calculate_velocity(
-                    row[column]*1000, row["FRSPEED"], A, B, C, x_min
-                ),
-                axis=1
-            )
 
     return gdf
 
@@ -141,7 +135,7 @@ def main(config_filepath, network_filepath, floodmap_dir, output_dir):
         config["network_buffer_factor"],
         config["CRS"]
     )
-    gdf = zonal_statistics(filepaths, gdf_network, config["link_depth"])
+    gdf = zonal_statistics(filepaths, gdf_network, config["link_depth"], config["extension"])
     gdf = vehicle_velocity(gdf, config["link_depth"])
 
     output = output_dir + "flooded_network"
@@ -153,8 +147,8 @@ def main(config_filepath, network_filepath, floodmap_dir, output_dir):
 
 if __name__ == "__main__":
     main(
-        config_filepath="test/config.json",
-        network_filepath="test/data/network/network.gpkg",
-        floodmap_dir="test/data/flooding_maps_citiCAT_single",
-        output_dir="test/flood_network_output_3"
+        config_filepath="",
+        network_filepath="",
+        floodmap_dir="",
+        output_dir=""
     )

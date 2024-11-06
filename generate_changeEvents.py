@@ -62,12 +62,8 @@ def main(config_filepath, flood_network_csv_filepath, output_dir):
         current_time = config["event_start_time"]
 
         dataframe = load_df(flood_network_csv_filepath, config)
-
-        if "velocity" in dataframe.columns:
-            velocity_cols = ["velocity"]
-        else:
-            velocity_cols = [col for col in dataframe.columns if col.endswith("_" + config["velocity_column"])]
-            velocity_cols = sort_filenames(velocity_cols)
+        velocity_cols = [col for col in dataframe.columns if col.endswith("_" + config["velocity_column"])]
+        velocity_cols = sort_filenames(velocity_cols)
 
         for column in velocity_cols:
             print(column)
@@ -94,7 +90,7 @@ def main(config_filepath, flood_network_csv_filepath, output_dir):
 
 if __name__ == "__main__":
     main(
-        config_filepath="test/config.json",
-        flood_network_csv_filepath="test/flood_network_output_3/flooded_network.csv",
-        output_dir="test/flood_network_output_3/"
+        config_filepath="",
+        flood_network_csv_filepath="",
+        output_dir=""
     )
