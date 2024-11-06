@@ -63,7 +63,9 @@ def main(config_filepath, flood_network_csv_filepath, output_dir):
 
         dataframe = load_df(flood_network_csv_filepath, config)
         velocity_cols = [col for col in dataframe.columns if col.endswith("_" + config["velocity_column"])]
-        velocity_cols = sort_filenames(velocity_cols)
+
+        if len(velocity_cols) != 1:
+            velocity_cols = sort_filenames(velocity_cols)
 
         for column in velocity_cols:
             print(column)
