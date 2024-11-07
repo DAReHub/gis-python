@@ -72,6 +72,8 @@ def zonal_statistics(floodmap_filepaths, network, statistic, extension):
 
 # Method: https://doi.org/10.1016/j.trd.2017.06.020
 def calculate_velocity(depth, freespeed, A, B, C, x_min):
+    if depth == 0:
+        return freespeed
     if depth > x_min:
         return 0
     max_v_in_flood_kmh = (A * depth**2) + (B * depth) + C
