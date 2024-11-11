@@ -77,6 +77,11 @@ def main(config_filepath, flood_network_csv_filepath, output_dir):
                 links = data["ID"].to_list()
                 for link in links:
                     writefile.write(f'<link refId="{link}"/>\n')
+
+                # MATSim doesn't accept 0 speed - use very small alternative
+                if value == 0:
+                    value = 0.001
+
                 writefile.write(f'<freespeed type="absolute" value="{value}"/>\n')
                 writefile.write("</networkChangeEvent>\n")
 
