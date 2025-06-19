@@ -7,16 +7,13 @@ from rasterio.transform import from_origin
 from rasterio.features import rasterize
 from shapely.geometry import Point
 import os
+from pathlib import Path
 
 
 def main(input_dir: str, output_dir: str, crs: str):
-    if not input_dir.endswith("/"):
-        input_dir += "/"
-    if not output_dir.endswith("/"):
-        output_dir += "/"
-
-    filepaths = [input_dir + file for file in os.listdir(input_dir) if
-                 file.endswith(".rsl")]
+    input_path = Path(input_dir)
+    output_path = Path(output_dir)
+    filepaths = list(input_path.glob("*.rsl"))
 
     for filepath in filepaths:
         filename = os.path.basename(filepath).replace('.rsl', '')
@@ -42,7 +39,7 @@ def main(input_dir: str, output_dir: str, crs: str):
             dtype='float32'  # or 'int32' if your values are integers
         )
 
-        output_filepath = output_dir + filename + '.tif'
+        output_filepath = (output_path / filename).with_suffix('.tif')
         print('-> Writing to', output_filepath)
         with rasterio.open(
             output_filepath,
