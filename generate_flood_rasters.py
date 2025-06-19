@@ -19,7 +19,7 @@ def main(input_dir: str, output_dir: str, crs: str):
                  file.endswith(".rsl")]
 
     for filepath in filepaths:
-        filename = filepath.split('/')[-1].replace('.rsl', '')
+        filename = os.path.basename(filepath).replace('.rsl', '')
         print('Processing', filename)
 
         print('-> Loading')
