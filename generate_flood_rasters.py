@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 
 
-def main(input_dir: str, output_dir: str, crs: str):
+def main(input_dir: str, output_dir: str, crs: str, cellsize: int):
     input_path = Path(input_dir)
     output_path = Path(output_dir)
     filepaths = list(input_path.glob("*.rsl"))
@@ -26,10 +26,9 @@ def main(input_dir: str, output_dir: str, crs: str):
 
         print('-> Building raster')
         xmin, ymin, xmax, ymax = gdf.total_bounds
-        pixel_size = 5  # meters - the difference between point centroids TODO: figure out how to find this automatically
-        width = int((xmax - xmin) / pixel_size)
-        height = int((ymax - ymin) / pixel_size)
-        transform = from_origin(xmin, ymax, pixel_size, pixel_size)
+        width = int((xmax - xmin) / cellsize)
+        height = int((ymax - ymin) / cellsize)
+        transform = from_origin(xmin, ymax, cellsize, cellsize)
         shapes = ((geom, val) for geom, val in zip(gdf.geometry, gdf['Depth']))
         raster = rasterize(
             shapes=shapes,
@@ -61,5 +60,6 @@ if __name__ == "__main__":
     main(
         input_dir="",  # path to .rsl outputs
         output_dir="",  # path for .tif outputs
-        crs=""  # str without "EPSG:" e.g. "27700"
+        crs="",  # str without "EPSG:" e.g. "27700"
+        cellsize=5  # int (metres), the cellsize defined in CityCAT Domain_DEM.asc input
     )
