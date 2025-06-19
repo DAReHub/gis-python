@@ -6,6 +6,7 @@
 import os
 import fiona
 import geopandas as gpd
+import pandas as pd
 from shapely.geometry import shape
 from exactextract import exact_extract
 import json
@@ -25,15 +26,24 @@ def load_network(filepath, CRS):
         geometries = [shape(feature['geometry']) for feature in src]
         properties = [feature['properties'] for feature in src]
     gdf = gpd.GeoDataFrame(properties, geometry=geometries)
+    if not 'FRSPEED' in gdf.columns:
+        raise Exception('FRSPEED not found in network')
     return gdf.set_crs(CRS)
 
 
 def exlude_network_modes(df, excluded_modes):
-    return df.loc[~df["MODES"].isin(excluded_modes)]
+    if 'MODES' in df.columns:
+        return df.loc[~df["MODES"].isin(excluded_modes)]
+    print("-> MODES column not found, all links will remain")
+    return df
 
 
 def buffer_network(df, factor):
-    df["geometry"] = df.buffer(df["LANES"] * factor)
+    if 'LANES' in df.columns:
+        df["geometry"] = df.buffer(df["LANES"] * factor)
+    else:
+        print("-> LANE column not found, defaulting to a single lane width buffer")
+        df["geometry"] = df.buffer(1 * factor)
     return df
 
 
@@ -49,24 +59,26 @@ def prepare_network(network_filepath, excluded_modes, network_buffer_factor, CRS
     return buffer_network(gdf, network_buffer_factor)
 
 
-def zonal_statistics(floodmap_filepaths, network, statistic, extension):
+def zonal_statistics(filepaths, network, id, statistic, extension):
     print("calculating zonal statistics")
-    ngdf = network[['ID', 'geometry']].copy()
+    ngdf = network[[id, 'geometry']].copy()
     gdf = exact_extract(
-        rast=floodmap_filepaths,
+        rast=filepaths,
         vec=ngdf,
         ops=statistic,
-        include_cols=["ID"],
+        include_cols=[id],
         include_geom=True,
         output="pandas",
         strategy="raster-sequential",
         # progress=True
     )
-    merged = network.merge(gdf.drop(columns='geometry'), on="ID", how="inner")
+    merged = network.merge(gdf.drop(columns='geometry'), on=id, how="inner")
+
     # if single file processed, column name will be just <statistic>. Add filename
     if statistic in merged.columns:
-        filename = floodmap_filepaths[0].split("/")[-1].replace(extension, "")
+        filename = filepaths[0].split("/")[-1].replace(extension, "")
         merged = merged.rename(columns={statistic: filename + "_" + statistic})
+
     return gpd.GeoDataFrame(merged, geometry=gdf.geometry)
 
 
@@ -137,7 +149,13 @@ def main(config_filepath, network_filepath, floodmap_dir, output_dir):
         config["network_buffer_factor"],
         config["CRS"]
     )
-    gdf = zonal_statistics(filepaths, gdf_network, config["link_depth"], config["extension"])
+    gdf = zonal_statistics(
+        filepaths,
+        gdf_network,
+        config["network_id_column"],
+        config["link_depth"],
+        config["extension"]
+    )
     gdf = vehicle_velocity(gdf, config["link_depth"])
 
     output = output_dir + "flooded_network"
