@@ -1,9 +1,9 @@
 {
   "flood_network": {
-    "extension": ".tif",
     "network_buffer_factor": 1.825,
     "CRS": 27700,
     "excluded_modes": ["rail", "bus", "subway"],
+    "network_id_column": "osm_id",
     "depths_column": "VALUE",
     "link_depth": "max"
   },

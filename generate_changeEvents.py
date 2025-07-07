@@ -1,12 +1,11 @@
 # This script generates a networkChangeEvents xml file
 # Inputs - flood_network CSV outputs
 
-import os
 import re
 import pandas as pd
 from datetime import datetime, timedelta
 import json
-
+from pathlib import Path
 
 def load_config(filepath):
     with open(filepath, 'r') as file:
@@ -52,12 +51,13 @@ def sort_filenames(files):
 
 
 def main(config_filepath, flood_network_csv_filepath, output_dir):
-    if not output_dir.endswith("/"):
-        output_dir += "/"
+    config_filepath = Path(config_filepath)
+    flood_network_csv_filepath = Path(flood_network_csv_filepath)
+    output_dir = Path(output_dir)
 
     config = load_config(config_filepath)["generate_changeEvents"]
 
-    with open(output_dir + "networkChangeEvents.xml", "w") as writefile:
+    with open(output_dir / "networkChangeEvents.xml", "w") as writefile:
         write_headers(writefile)
         current_time = config["event_start_time"]
 

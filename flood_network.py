@@ -2,14 +2,13 @@
 # link within a network.
 # Inputs - cityCAT floodmap output directory, transport network
 
-
-import os
 import fiona
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import shape
 from exactextract import exact_extract
 import json
+from pathlib import Path
 
 # unreferenced but used by other packages
 import pyogrio  # for faster exporting
@@ -59,7 +58,7 @@ def prepare_network(network_filepath, excluded_modes, network_buffer_factor, CRS
     return buffer_network(gdf, network_buffer_factor)
 
 
-def zonal_statistics(filepaths, network, id, statistic, extension):
+def zonal_statistics(filepaths, network, id, statistic):
     print("calculating zonal statistics")
     ngdf = network[[id, 'geometry']].copy()
     gdf = exact_extract(
@@ -76,8 +75,7 @@ def zonal_statistics(filepaths, network, id, statistic, extension):
 
     # if single file processed, column name will be just <statistic>. Add filename
     if statistic in merged.columns:
-        filename = filepaths[0].split("/")[-1].replace(extension, "")
-        merged = merged.rename(columns={statistic: filename + "_" + statistic})
+        merged = merged.rename(columns={statistic: filepaths[0].stem + "_" + statistic})
 
     return gpd.GeoDataFrame(merged, geometry=gdf.geometry)
 
@@ -119,29 +117,29 @@ def vehicle_velocity(gdf, link_depth):
 
 
 def export_gpkg(gdf, filepath):
-    print("Exporting to file: ", filepath + ".gpkg")
-    gdf.to_file(filepath + ".gpkg", driver="GPKG", engine="pyogrio")
+    filepath = filepath.with_suffix(".gpkg")
+    print("Exporting to file: ", filepath)
+    gdf.to_file(filepath, driver="GPKG", engine="pyogrio")
 
 
 def export_csv(gdf, filepath):
-    print("Exporting to file: ", filepath + ".csv")
+    filepath = filepath.with_suffix(".csv")
+    print("Exporting to file: ", filepath)
     # TODO: Instead of dropping geometry, turn to WKT
     # gdf['geometry'] = gdf['geometry'].apply(
     #     lambda geom: geom.wkt if geom else None)
     df = gdf.drop(columns='geometry')
     df = df.fillna("null")
-    df.to_csv(filepath + ".csv", index=False)
+    df.to_csv(filepath, index=False)
 
 
 def main(config_filepath, network_filepath, floodmap_dir, output_dir):
-    if not floodmap_dir.endswith("/"):
-        floodmap_dir += "/"
-    if not output_dir.endswith("/"):
-        output_dir += "/"
+    floodmap_dir = Path(floodmap_dir)
+    output_dir = Path(output_dir)
+    config_filepath = Path(config_filepath)
 
     config = load_config(config_filepath)["flood_network"]
-    filepaths = [floodmap_dir + file for file in os.listdir(floodmap_dir) if
-                 file.endswith(config["extension"])]
+    filepaths = list(floodmap_dir.glob("*.tif"))
 
     gdf_network = prepare_network(
         network_filepath,
@@ -154,11 +152,10 @@ def main(config_filepath, network_filepath, floodmap_dir, output_dir):
         gdf_network,
         config["network_id_column"],
         config["link_depth"],
-        config["extension"]
     )
     gdf = vehicle_velocity(gdf, config["link_depth"])
 
-    output = output_dir + "flooded_network"
+    output = output_dir / "flooded_network"
     export_gpkg(gdf, output)
     export_csv(gdf, output)
 
