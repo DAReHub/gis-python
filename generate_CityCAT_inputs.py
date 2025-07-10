@@ -6,11 +6,13 @@ handling MultiPolygon geometries, and exporting the data for use in CityCAT floo
 """
 
 import geopandas as gpd
+from citycatio import utils as citycat_utils
 from citycatio.inputs import GreenAreas, Buildings  # TODO: Find a way of installing without conda
 from pathlib import Path
 import pandas as pd
 import argparse
 import utils
+import os
 
 
 def main(feature: str, feature_dir: str, output_dir: str,
@@ -37,16 +39,19 @@ def main(feature: str, feature_dir: str, output_dir: str,
         GreenAreas(gdf).write(output_dir)
     elif feature == 'buildings':
         Buildings(gdf).write(output_dir)
+    elif feature == 'rainfall':
+        with open(os.path.join(output_dir, 'Rainfall.txt'), 'w') as f:
+            f.write(citycat_utils.geoseries_to_string(gdf.geometry))
 
     print('Done')
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="Convert OS Greenspace to CityCAT format")
+    p = argparse.ArgumentParser(description="Convert OS Greenspace/Buildings/Rainfall to CityCAT format")
     p.add_argument(
         '--feature',
         required=True,
-        choices=['buildings', 'greenspaces'],
+        choices=['buildings', 'greenspaces', 'rainfall'],
         type=str
     )
     p.add_argument(
