@@ -19,7 +19,6 @@ def write_headers(filepath, tttn, iii, caseid):
 
 
 def write_data(output_filepath, prec, seconds):
-    prec *= 2.7777777777778E-7  # convert to m/s
     format2prec = ' '.join(' '.join('%0.12f' % x for x in y) for y in prec)
     reshape = np.ravel(str(format2prec))
     reshape = ' '.join(map(str, reshape))
@@ -143,6 +142,7 @@ def main(
         lat = dosya.variables['grid_latitude'][:]
         lon = dosya.variables['grid_longitude'][:]
         prec = (dosya.variables['precipitation_flux'][ttt, :, :])
+        prec *= 2.7777777777778E-7  # convert to m/s
 
         write_data(output, prec, seconds)
 
