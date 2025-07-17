@@ -75,12 +75,38 @@ def main(input_dir: str, output_dir: str, crs: str, cellsize: int, multithread: 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert .rsl files to GeoTIFFs")
-    parser.add_argument('--input_dir', required=True, help='Path to .rsl files')
-    parser.add_argument('--output_dir', required=True, help='Path for .tif outputs')
-    parser.add_argument('--crs', required=True, help='CRS EPSG code without "EPSG:" e.g. "27700"')
-    parser.add_argument('--cellsize', type=int, default=5, help='Cell size in units of the CRS')
-    parser.add_argument('--multithread', action='store_true', help='Enable parallel processing')
-    parser.add_argument('--workers', type=int, default=4, help='Number of worker processes if multithreading')
+    parser.add_argument(
+        '--input_dir',
+        required=True,
+        help='Path to .rsl files'
+    )
+    parser.add_argument(
+        '--output_dir',
+        required=True,
+        help='Path for .tif outputs'
+    )
+    parser.add_argument(
+        '--crs',
+        required=True,
+        help='CRS EPSG code without "EPSG:" e.g. "27700"'
+    )
+    parser.add_argument(
+        '--cellsize',
+        type=int,
+        default=5,
+        help='Cell size in units of the CRS'
+    )
+    parser.add_argument(
+        '--multithread',
+        action='store_true',
+        help='Enable parallel processing'
+    )
+    parser.add_argument(
+        '--workers',
+        type=int,
+        default=4,
+        help='Number of worker processes if multithreading'
+    )
     args = parser.parse_args()
 
     main(
