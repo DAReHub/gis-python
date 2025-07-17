@@ -1,4 +1,4 @@
-"Takes UKCP NETCDF file and converts to Rainfall_Data suitable for CityCAT"
+"Takes UKCP NETCDF 2.2km grid file and converts to Rainfall_Data suitable for CityCAT"
 
 import numpy as np
 from netCDF4 import Dataset
@@ -26,10 +26,7 @@ def write_data(output_filepath, prec, seconds):
         fcat.write(f"{seconds} {reshape}\n")
 
 
-def write_figure(
-    output_dir, region, lat, lon, prec, ttt, pole_longitude, pole_latitude
-):
-
+def write_figure(output_dir, region, lat, lon, prec, ttt):
     output = output_dir / str(ttt)
     print('Plotting:', output)
 
@@ -43,7 +40,8 @@ def write_figure(
     mplt.rc('xtick', labelsize=9)
     mplt.rc('ytick', labelsize=9)
 
-    projection = ccrs.RotatedPole(pole_longitude, pole_latitude)
+    # pole lon and lat values specific to UKCP-Local
+    projection = ccrs.RotatedPole(pole_longitude=177.5, pole_latitude=37.5)
 
     fig = plt.figure(figsize=(5, 6))
     ax = fig.add_subplot(1, 1, 1, projection=projection)
@@ -113,8 +111,6 @@ def main(
         end_val: int,
         ngrid: int,
         caseid: str,
-        pole_longitude: float = None,
-        pole_latitude: float = None,
         region: str = None,
         plot: bool = False,
 ):
@@ -147,10 +143,7 @@ def main(
         write_data(output, prec, seconds)
 
         if plot:
-            write_figure(
-                output_dir, region, lat, lon, prec, ttt, pole_longitude,
-                pole_latitude
-            )
+            write_figure(output_dir, region, lat, lon, prec, ttt)
 
         ttt += 1
 
@@ -193,20 +186,6 @@ if __name__ == "__main__":
         help="provided value is squared to form a grid"
     )
     p.add_argument(
-        '--pole_longitude',
-        required=False,
-        type=float,
-        default=177.5,
-        help="Only required if plotting. Defaults to 177.5"
-    )
-    p.add_argument(
-        '--pole_latitude',
-        required=False,
-        type=float,
-        default=37.5,
-        help="Only required if plotting. Defaults to 37.5"
-    )
-    p.add_argument(
         '--plot',
         required=False,
         action='store_true',
@@ -231,6 +210,4 @@ if __name__ == "__main__":
         start_val=args.start_val,
         end_val=args.end_val,
         ngrid=args.ngrid,
-        pole_longitude=args.pole_longitude,
-        pole_latitude=args.pole_latitude
     )
