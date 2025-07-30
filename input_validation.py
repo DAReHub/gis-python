@@ -69,7 +69,7 @@ def floodRasters(filepath):
 
 
 def main(filepath):
-    floodRasters(filepath + "/flood-rasters/")
+    floodRasters(filepath + "/flood_rasters/")
     network(filepath + '/network.gpkg')
 
 

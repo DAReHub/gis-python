@@ -49,8 +49,8 @@ def main(
     output_dir: str,
     event_start_time: str,
     time_interval: str,
-    flood_network_id_name: str,
-    velocity_keyword: str
+    flood_network_id_name: str = "ID",
+    velocity_keyword: str = "velocity"
 ):
 
     flood_network_csv_filepath = Path(flood_network_csv_filepath)
